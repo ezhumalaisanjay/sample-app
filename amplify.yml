@@ -1,21 +1,114 @@
 version: 1
+
 backend:
   phases:
     build:
+    
       commands:
-        - npm ci --cache .npm --prefer-offline
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+        - export NODE_OPTIONS="--max-old-space-size=8192"
+        - sudo fallocate -l 4G /swapfile
+        - sudo chmod 600 /swapfile
+        - sudo mkswap /swapfile
+        - sudo swapon /swapfile
+        - sudo swapon -s
+        - npm ci --no-audit --no-fund --prefer-offline
+
+
+
+
 frontend:
   phases:
+    preBuild:
+      commands:
+        - npm ci --no-audit --no-fund --prefer-offline
     build:
       commands:
-        - npm run build
+        - NODE_ENV=production node --max-old-space-size=8192 node_modules/next/dist/bin/next build
+
   artifacts:
     baseDirectory: .next
     files:
       - '**/*'
+
   cache:
     paths:
-      - .next/cache/**/*
-      - .npm/**/*
-      - node_modules/**/*
+      - .npm
+
+test:
+  phases:
+    preTest:
+      commands:
+        - npm ci
+        - npm install -g wait-on
+        - npm install mocha mochawesome mochawesome-merge mochawesome-report-generator
+        - npm start &
+        - wait-on http://localhost:3000
+    test:
+      commands:
+        - npx cypress run --reporter mochawesome --reporter-options "reportDir=cypress/report/mochawesome-report,overwrite=false,html=false,json=true,timestamp=mmddyyyy_HHMMss"
+    postTest:
+      commands:
+        - TIMESTAMP=$(date +"%Y%m%d_%H%M%S")  # Generate timestamp
+        - S3_BASE_PATH="s3://apsouth1fileupload/cypress-reports/$TIMESTAMP"
+
+        # Merge mochawesome JSON reports
+        - npx mochawesome-merge cypress/report/mochawesome-report/mochawesome*.json > cypress/report/mochawesome.json
+
+        # Upload test results to S3
+        - aws s3 cp cypress/report/mochawesome.json "$S3_BASE_PATH/mochawesome.json"
+        - aws s3 cp cypress/report/mochawesome-report/ "$S3_BASE_PATH/mochawesome-report/" --recursive
+        - aws s3 cp cypress/videos/ "$S3_BASE_PATH/videos/" --recursive
+
+        # Fetch latest video file (if exists)
+        - VIDEO_FILE=$(aws s3 ls "$S3_BASE_PATH/videos/" --recursive | sort | awk '{print $4}' | tail -n 1)
+        - if [ -n "$VIDEO_FILE" ]; then VIDEO_URL="https://apsouth1fileupload.s3.ap-south-1.amazonaws.com/$VIDEO_FILE"; else VIDEO_URL=""; fi
+
+        # Generate URLs for report & video
+        - REPORT_URL="https://apsouth1fileupload.s3.ap-south-1.amazonaws.com/cypress-reports/$TIMESTAMP/mochawesome.json"
+
+        # Capture build/test exit status
+        - BUILD_STATUS=$?
+        - if [ "$BUILD_STATUS" -eq 0 ]; then STATUS_MSG="✅ Build Deployed"; else STATUS_MSG="❌ Build Failed"; fi
+
+        # Zoho Cliq User IDs
+        - USERS=("812297583" "645080184" "839106043" "640679770" "762228698" "877675366" "874065476")
+
+        # Send notifications to multiple users (Fixed indentation & authentication)
+        - |
+          for USER_ID in "${USERS[@]}"; do
+            curl -X POST "https://cliq.zoho.com/api/v2/bots/cypressbot/message?zapikey=1001.cfc1a1d55893cb54eb297d116e79485d.e31accb233f5f8f517df0816f6f25e2b" \
+                 -H "Content-Type: application/json" \
+                 -d '{
+                      "text": "All tests executed. Click the buttons below for details.",
+                      "userids": "'"${USER_ID}"'",
+                      "sync_message": true,
+                      "bot": { 
+                        "name": "Cypress Bot", 
+                        "image": "https://avatars.slack-edge.com/2022-11-30/4449820877652_82d27f55bda7dc46d5cd_512.png" 
+                      },
+                      "card": { 
+                        "title": "'"$STATUS_MSG"'", 
+                        "icon": "https://img.freepik.com/premium-vector/lab-test-icon_946691-1964.jpg" 
+                      },
+                      "buttons": [
+                        { 
+                          "label": "📄 View Test Report", 
+                          "action": { "type": "open.url", "data": { "web": "'"$REPORT_URL"'" } } 
+                        },
+                        { 
+                          "label": "🎥 Watch Test Video", 
+                          "action": { "type": "open.url", "data": { "web": "'"$VIDEO_URL"'" } } 
+                        }
+                      ]
+                    }';
+          done
+
+  artifacts:
+    baseDirectory: cypress
+    files:
+      - '**/*.json'
+      - '**/*.html'
+      - '**/*.png'
+      - '**/*.mp4'
+      - '**/*.log'
+      - '**/*.txt'
