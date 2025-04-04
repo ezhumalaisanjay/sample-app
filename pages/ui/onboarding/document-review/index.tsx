@@ -18,8 +18,20 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Check, X, Eye, Search, FileText, ChevronLeft, ChevronRight } from "lucide-react"
+import { Check, X, Eye, Search, FileText, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table"
 
 interface Document {
   id: string
@@ -39,6 +51,14 @@ interface Employee {
 }
 
 export default function EmployeeDocumentReview() {
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
+  const [comment, setComment] = useState("")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+  const [sortingColumn, setSortingColumn] = useState<SortingState>([])
+  const [filtersColumn, setFiltersColumn] = useState<ColumnFiltersState>([])
   const [employees, setEmployees] = useState<Employee[]>([
     {
       id: "EMP001",
@@ -116,37 +136,133 @@ export default function EmployeeDocumentReview() {
     },
   ])
 
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
-  const [comment, setComment] = useState("")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(5)
+  const columns: ColumnDef<Employee>[] = [
+    {
+      accessorKey: "id",
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            ID
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => <div className="font-medium">{row.getValue("department")}</div>,
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Name
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+    },
+    {
+      accessorKey: "position",
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Position
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+    },
+    {
+      accessorKey: "department",
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Department
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+    },
+
+    {
+      accessorKey: "actions",
+      cell: ({ row }) => {
+        const rowData = row.original
+        return (
+          <Button variant="outline" size="sm" onClick={() => setSelectedEmployee(rowData)}>
+            <Eye className="w-4 h-4 mr-1" /> Review Documents
+          </Button>
+        )
+      },
+    },
+  ]
+
+  const documentReviewTable = useReactTable({
+    data: employees,
+    columns: columns,
+    onSortingChange: setSortingColumn,
+    onColumnFiltersChange: setFiltersColumn,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    state: {
+      sorting: sortingColumn,
+      columnFilters: filtersColumn,
+    },
+  })
 
   const handleApprove = (employeeId: string, docId: string) => {
-    setEmployees(
-      employees.map((emp) =>
-        emp.id === employeeId
-          ? {
-              ...emp,
-              documents: emp.documents.map((doc) => (doc.id === docId ? { ...doc, status: "Approved" } : doc)),
-            }
-          : emp,
-      ),
+    // Update employees state with explicit type for status
+    const updatedEmployees = employees.map((emp) =>
+      emp.id === employeeId
+        ? {
+            ...emp,
+            documents: emp.documents.map((doc) => (doc.id === docId ? { ...doc, status: "Approved" as const } : doc)),
+          }
+        : emp,
     )
+    setEmployees(updatedEmployees)
+
+    // Update selectedEmployee state with explicit type for status
+    if (selectedEmployee && selectedEmployee.id === employeeId) {
+      const updatedDocuments = selectedEmployee.documents.map((doc) =>
+        doc.id === docId ? { ...doc, status: "Approved" as const } : doc,
+      )
+      setSelectedEmployee({
+        ...selectedEmployee,
+        documents: updatedDocuments,
+      })
+    }
+
+    // Update selectedDocument state with explicit type for status
+    setSelectedDocument((prev) => (prev && prev.id === docId ? { ...prev, status: "Approved" as const } : prev))
   }
 
   const handleReject = (employeeId: string, docId: string) => {
-    setEmployees(
-      employees.map((emp) =>
-        emp.id === employeeId
-          ? {
-              ...emp,
-              documents: emp.documents.map((doc) => (doc.id === docId ? { ...doc, status: "Rejected" } : doc)),
-            }
-          : emp,
-      ),
+    // Update employees state with explicit type for status
+    const updatedEmployees = employees.map((emp) =>
+      emp.id === employeeId
+        ? {
+            ...emp,
+            documents: emp.documents.map((doc) => (doc.id === docId ? { ...doc, status: "Rejected" as const } : doc)),
+          }
+        : emp,
     )
+    setEmployees(updatedEmployees)
+
+    // Update selectedEmployee state with explicit type for status
+    if (selectedEmployee && selectedEmployee.id === employeeId) {
+      const updatedDocuments = selectedEmployee.documents.map((doc) =>
+        doc.id === docId ? { ...doc, status: "Rejected" as const } : doc,
+      )
+      setSelectedEmployee({
+        ...selectedEmployee,
+        documents: updatedDocuments,
+      })
+    }
+
+    // Update selectedDocument state with explicit type for status
+    setSelectedDocument((prev) => (prev && prev.id === docId ? { ...prev, status: "Rejected" as const } : prev))
   }
 
   const filteredEmployees = employees.filter(
@@ -170,7 +286,7 @@ export default function EmployeeDocumentReview() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="p-2 space-y-6">
       <h1 className="text-2xl font-bold">Employee Document Review</h1>
 
       <div className="flex items-center space-x-2">
@@ -190,35 +306,44 @@ export default function EmployeeDocumentReview() {
           <TabsTrigger value="grid">Grid View</TabsTrigger>
         </TabsList>
         <TabsContent value="list">
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Documents</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell>{employee.id}</TableCell>
-                    <TableCell className="font-medium">{employee.name}</TableCell>
-                    <TableCell>{employee.position}</TableCell>
-                    <TableCell>{employee.department}</TableCell>
-                    <TableCell>{employee.documents.length}</TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedEmployee(employee)}>
-                        <Eye className="w-4 h-4 mr-1" /> Review Documents
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="border rounded-lg">
+            <ScrollArea className="w-[85vw] lg:w-full">
+              <Table>
+                <TableHeader>
+                  {documentReviewTable.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {documentReviewTable.getRowModel().rows?.length ? (
+                    documentReviewTable.getRowModel().rows.map((row) => (
+                      <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-24 text-center">
+                        No results.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </div>
         </TabsContent>
         <TabsContent value="grid">
@@ -258,9 +383,7 @@ export default function EmployeeDocumentReview() {
 
       <div className="flex items-center justify-between mt-4">
         <div className="flex items-center space-x-2">
-          <p className="text-sm text-gray-500">
-            Rows Per Page
-          </p>
+          <p className="text-sm text-gray-500">Rows Per Page</p>
           <Select
             value={itemsPerPage.toString()}
             onValueChange={(value) => {
@@ -290,57 +413,58 @@ export default function EmployeeDocumentReview() {
       </div>
 
       <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Review Documents: {selectedEmployee?.name}</DialogTitle>
-            <DialogDescription>
-              Employee ID: {selectedEmployee?.id} | Department: {selectedEmployee?.department}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Document Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Upload Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedEmployee?.documents.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell>{doc.name}</TableCell>
-                    <TableCell>{doc.type}</TableCell>
-                    <TableCell>{doc.uploadDate}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          doc.status === "Approved" ? "outline" : doc.status === "Rejected" ? "destructive" : "default"
-                        }
-                      >
-                        {doc.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => setSelectedDocument(doc)}>
-                          <FileText className="w-4 h-4 mr-1" /> View
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleApprove(selectedEmployee.id, doc.id)}>
-                          <Check className="w-4 h-4 mr-1" /> Approve
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleReject(selectedEmployee.id, doc.id)}>
-                          <X className="w-4 h-4 mr-1" /> Reject
-                        </Button>
-                      </div>
-                    </TableCell>
+        <DialogContent className="lg:max-w-4xl">
+          <ScrollArea className="w-full">
+            <DialogHeader>
+              <DialogTitle>Review Documents: {selectedEmployee?.name}</DialogTitle>
+              <DialogDescription>
+                Employee ID: {selectedEmployee?.id} | Department: {selectedEmployee?.department}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Document Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Upload Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {selectedEmployee?.documents.map((doc) => (
+                    <TableRow key={doc.id}>
+                      <TableCell>{doc.name}</TableCell>
+                      <TableCell>{doc.type}</TableCell>
+                      <TableCell>{doc.uploadDate}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            doc.status === "Approved"
+                              ? "outline"
+                              : doc.status === "Rejected"
+                                ? "destructive"
+                                : "default"
+                          }
+                        >
+                          {doc.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="sm" onClick={() => setSelectedDocument(doc)}>
+                            <FileText className="w-4 h-4 mr-1" /> View
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
@@ -355,25 +479,25 @@ export default function EmployeeDocumentReview() {
               <Label htmlFor="docName" className="text-right">
                 Name
               </Label>
-              <Input id="docName" value={selectedDocument?.name} className="col-span-3" readOnly />
+              <Input id="docName" value={selectedDocument?.name || ""} className="col-span-3" readOnly />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="docType" className="text-right">
                 Type
               </Label>
-              <Input id="docType" value={selectedDocument?.type} className="col-span-3" readOnly />
+              <Input id="docType" value={selectedDocument?.type || ""} className="col-span-3" readOnly />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="docUploadDate" className="text-right">
                 Upload Date
               </Label>
-              <Input id="docUploadDate" value={selectedDocument?.uploadDate} className="col-span-3" readOnly />
+              <Input id="docUploadDate" value={selectedDocument?.uploadDate || ""} className="col-span-3" readOnly />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="docStatus" className="text-right">
                 Status
               </Label>
-              <Input id="docStatus" value={selectedDocument?.status} className="col-span-3" readOnly />
+              <Input id="docStatus" value={selectedDocument?.status || ""} className="col-span-3" readOnly />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="docComment" className="text-right">

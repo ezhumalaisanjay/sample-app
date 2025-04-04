@@ -2,34 +2,23 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ThemeProvider } from "@/components/ui/theme-provider"
 import SiteHeader from "@/pages/ui/header"
 import AppSidebar from "@/pages/ui/sidebar"
-import { ChartNoAxesColumn, Frame, PersonStanding, PieChart, Proportions, Settings } from "lucide-react"
-import { useState } from "react"
+import { ChartNoAxesColumn, Frame, Loader, PackagePlus, PersonStanding, Proportions, Settings } from "lucide-react"
+import { useEffect, useState } from "react"
 import SystemSettingsPage from "@/pages/ui/system-settings"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import GroupSettingsPage from "@/pages/ui/group-settings/page"
 
 function SettingsPage() {
-  const [ isActive, setIsActive ] = useState<number>(4);
+  const [ isActive, setIsActive ] = useState<number>(5);
+  const [isClient, setIsClient] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, [])
+
   const breadCrumbs = [
-  
     {
       index: 0,
-      name: "Dashboard",
-      url: "/tenant/dashboard",
-    }, {
-      index: 1,
-      name: "Analytics",
-      url: "/tenant/analytics",
-    }, {
-      index: 2,
-      name: "Users",
-      url: "/tenant/users",
-    },  {
-      index: 3,
-      name: "Reports",
-      url: "/tenant/reports",
-    }, {
-      index: 3,
       name: "Settings",
       url: "/tenant/settings",
     },
@@ -41,6 +30,11 @@ function SettingsPage() {
         name: "Dashboard",
         url: "/tenant/dashboard",
         icon: Frame,
+      },
+      {
+        name: "Onboarding",
+        url: "/tenant/onboarding",
+        icon: PackagePlus,
       },
       {
         name: "Analytics",
@@ -69,13 +63,13 @@ function SettingsPage() {
     setIsActive(id);
   }
 
-  
   return(
-    <>  
+    <>
+      {isClient ?  
       <ThemeProvider>
         <div className="[--header-height:calc(theme(spacing.14))] flex w-full">
           <SidebarProvider>
-            <SiteHeader isActive={isActive} handleClick={handleClick} breadCrumbs={breadCrumbs} />
+            <SiteHeader isActive={0} handleClick={handleClick} breadCrumbs={breadCrumbs} />
             <div className="flex flex-1">
               <AppSidebar data={data} isActive={isActive} handleClick={handleClick}/>
               <SidebarInset>
@@ -99,7 +93,11 @@ function SettingsPage() {
             </div>
           </SidebarProvider>
         </div>
-      </ThemeProvider>
+      </ThemeProvider> : 
+      <div className="flex justify-center w-screen h-screen items-center">
+        <Loader className="animate-spin" />
+      </div>
+      }
     </>
   )
 }

@@ -15,7 +15,6 @@ import type { Schema } from "@/amplify/data/resource"
 import { Amplify } from "aws-amplify"
 import outputs from "@/amplify_outputs.json"
 import { generateClient } from "aws-amplify/api"
-import axios from "axios"
 
 // Define the form schema with validation
 const formSchema = z.object({
@@ -37,24 +36,6 @@ const formSchema = z.object({
 
 // Define the type for our form values
 type FormValues = z.infer<typeof formSchema>
-
-interface TenantResponse {
-  ClientId: string
-  TenantData: {
-    UserID: string
-    admin_email: string
-    admin_name: string
-    client_id: string
-    createdAt: string
-    group_name: string
-    id: string
-    identity_pool_id: string
-    phone_number: string
-    tenant_name: string
-    updatedAt: string
-    user_pool_id: string
-  }
-}
 
 interface Data {
   id: string
@@ -78,6 +59,10 @@ export default function TenantGroupForm({ data, close }: TenantGroupFormProps) {
   const [datas, setDatas] = useState<Array<Schema["Groups"]["type"]>>([]);
   const [organizationName, setOrganizationName] = useState<string>("");
 
+  client.models.Groups.observeQuery().subscribe({
+    next: (data) => setDatas([...data.items]),
+  });
+
   // Initialize the form with react-hook-form and zod validation
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -96,31 +81,6 @@ export default function TenantGroupForm({ data, close }: TenantGroupFormProps) {
       })
     }
   }, [data, form])
-
-  useEffect(() => {
-    const fetchingData = async () => {
-      const email = localStorage.getItem("email") || "default@example.com"
-      try {
-        const { data }: { data: TenantResponse } = await axios.post(
-          "/api/getTenantUserPool",
-          {
-            email: email,
-          }
-        );
-
-        setOrganizationName(data.TenantData.id);
-
-      } catch (err: any) {
-        console.error("❌ error:", err.message);
-      }
-    }
-
-    fetchingData();
-
-    client.models.Groups.observeQuery().subscribe({
-      next: (data) => setDatas([...data.items]),
-    });
-  }, [])
 
   // Determine if we're in edit mode
   const isEditMode = !!data
@@ -145,7 +105,7 @@ export default function TenantGroupForm({ data, close }: TenantGroupFormProps) {
         groupName: values.groupName,
         groupDescription: values.description,
         organization: organizationName,
-      })
+    })
     }
 
     toast({

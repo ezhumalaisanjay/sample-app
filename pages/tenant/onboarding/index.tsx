@@ -2,17 +2,29 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ThemeProvider } from "@/components/ui/theme-provider"
 import SiteHeader from "@/pages/ui/header/index"
 import AppSidebar from "@/pages/ui/sidebar/index"
-import TenetDashboard from "@/pages/ui/dashboard/tenet-dashboard"
 import { ChartNoAxesColumn, Frame, Loader, PackagePlus, PersonStanding, Proportions, Settings } from "lucide-react"
 import { useEffect, useState } from "react"
+import OnboardingPage from "../../ui/onboarding/index"
 
-export default function Dashboard() {
-  const [isActive, setIsActive] = useState<number>(0);
-  const [ isClient, setIsClient ] = useState<boolean>(false);
+export default function Onboarding() {
+  const [ isActive, setIsActive ] = useState<number>(1);
+  const [ isClient, setIsClient] = useState<boolean>(false);
 
   useEffect(() => {
     setIsClient(true);
   }, [])
+
+  const handleClick = (id: number) => {
+    setIsActive(id);
+  }
+
+  const breadCrumbs = [
+    {
+      index: 0,
+      name: "Onboarding",
+      url: "/tenant/onboarding",
+    }, 
+  ]
 
   const data = {
     projects: [
@@ -48,30 +60,20 @@ export default function Dashboard() {
       },
     ],
   }
-  const breadCrumbs = [
-    {
-      index: 0,
-      name: "Dashboard",
-      url: "/tenant/dashboard",
-    }, 
-  ]
-
-  const handleClick = (id: number) => {
-    setIsActive(id)
-  }
+  
   
   return (
     <>
-      {isClient ?
+      { isClient ?
       <ThemeProvider>
         <div className="[--header-height:calc(theme(spacing.14))] flex w-full">
           <SidebarProvider>
-            <SiteHeader isActive={isActive} handleClick={handleClick} breadCrumbs={breadCrumbs} />
+            <SiteHeader isActive={0} handleClick={handleClick} breadCrumbs={breadCrumbs}/>
             <div className="flex flex-1">
               <AppSidebar data={data} isActive={isActive} handleClick={handleClick}/>
               <SidebarInset>
                 <div className="flex flex-1 flex-col gap-4 mt-10 p-4">
-                  <TenetDashboard />
+                  <OnboardingPage />
                 </div>
               </SidebarInset>
             </div>

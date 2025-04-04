@@ -125,6 +125,8 @@ interface Employee {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  loading?: boolean
+  isError: boolean
   onView: (item: TData) => void
   onEdit: (item: TData) => void
   onDelete: (items: TData[]) => void
@@ -146,6 +148,8 @@ const client = generateClient<Schema>()
 function DataTable<TData extends Employee, TValue>({
   columns,
   data,
+  loading = false,
+  isError,
   onView,
   onEdit,
   onDelete,
@@ -422,7 +426,7 @@ function DataTable<TData extends Employee, TValue>({
           {groupData === "tenant" && (
             <Drawer open={handleDrawer} onOpenChange={setHandleDrawer}>
               <DrawerTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="hidden lg:block">
                   {" "}
                   <UserPlus className="h-4 w-4" />{" "}
                 </Button>
@@ -702,7 +706,9 @@ function DataTable<TData extends Employee, TValue>({
               />
               <span>Select All</span>
             </div>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <div className="text-center p-4 border rounded-md">Loading data...</div>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <div key={row.id} className="border rounded-md p-4">
                   <div className="flex flex-col md:flex-row gap-4">
@@ -811,7 +817,11 @@ function DataTable<TData extends Employee, TValue>({
                   </div>
                 </div>
               ))
-            ) : (
+            ) : isError ?
+            (
+              <div className="text-center p-4 border rounded-md">Error Fetching Data. Try again. </div>
+            )
+            : (
               <div className="text-center p-4 border rounded-md">No results.</div>
             )}
           </div>
@@ -842,7 +852,13 @@ function DataTable<TData extends Employee, TValue>({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {table.getRowModel().rows?.length ? (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={columns.length + 1} className="h-24 text-center">
+                        Loading data...
+                      </TableCell>
+                    </TableRow>
+                  ) : table.getRowModel().rows?.length ? (
                     table.getRowModel().rows.map((row) => (
                       <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                         <TableCell className="w-[40px] px-2">
@@ -859,7 +875,15 @@ function DataTable<TData extends Employee, TValue>({
                         ))}
                       </TableRow>
                     ))
-                  ) : (
+                  ) : isError ?
+                  (
+                    <TableRow>
+                      <TableCell colSpan={columns.length + 1} className="h-24 text-center">
+                        Error Fetching Data. Try again.
+                      </TableCell>
+                    </TableRow>
+                  )
+                  : (
                     <TableRow>
                       <TableCell colSpan={columns.length + 1} className="h-24 text-center">
                         No results.
@@ -873,7 +897,7 @@ function DataTable<TData extends Employee, TValue>({
           </div>
         )}
       </div>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 space-x-0 sm:space-x-2 py-4">
+      <div className="flex items-center justify-between space-y-2 sm:space-y-0 space-x-0 sm:space-x-2 py-4">
         <div className="flex items-center space-x-2">
           <div className="text-sm text-muted-foreground">Rows Per Page</div>
           <Select
@@ -882,7 +906,7 @@ function DataTable<TData extends Employee, TValue>({
               table.setPageSize(Number(value))
             }}
           >
-            <SelectTrigger className="h-8 w-[70px]">
+            <SelectTrigger className="h-8 w-max lg:w-[70px]">
               <SelectValue placeholder={table.getState().pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
@@ -894,7 +918,7 @@ function DataTable<TData extends Employee, TValue>({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+        <div className="flex gap-2 items-center">
           <span className="text-sm text-muted-foreground mr-2">
             Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
           </span>
@@ -936,15 +960,16 @@ export default function EmployeeListTable() {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [employeesToDelete, setEmployeesToDelete] = React.useState<Employee[]>([])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
-  const [datas, setDatas] = React.useState<Employee[]>([]);
-  const [organizationName, setOrganizationName] = React.useState<string>("");
-
+  const [datas, setDatas] = React.useState<Employee[]>([])
+  const [organizationName, setOrganizationName] = React.useState<string>("")
+  const [loading, setLoading] = React.useState<boolean>(true)
+  const [isError, setIsError] = React.useState<boolean>(false);
 
   // Update the responseData function to handle Nullable types
   function responseData() {
     client.models.Onboarding.observeQuery().subscribe({
       next: (data) => {
-        const filteredData = data.items.filter((item) => item.organization === organizationName);
+        const filteredData = data.items.filter((item) => item.organization === organizationName)
 
         const transformedData = filteredData.map((item) => ({
           id: item.id,
@@ -968,38 +993,41 @@ export default function EmployeeListTable() {
           trainingOverdue: false,
         }))
         setDatas(transformedData)
+        setTimeout(() => {setLoading(false)}, 3000)
+      },
+      error: (error) => {
+        console.error("Error fetching data:", error)
+        setLoading(false);
+        setIsError(true);
       },
     })
   }
 
   React.useEffect(() => {
-    console.log("Employee Table Data", datas);
+    //console.log("Employee Table Data", datas)
   }, [datas])
 
   React.useEffect(() => {
     const fetchingData = async () => {
       const email = localStorage.getItem("email") || "default@example.com"
       try {
-        const { data }: { data: TenantResponse } = await axios.post(
-          "/api/getTenantUserPool",
-          {
-            email: email,
-          }
-        );
+        const { data }: { data: TenantResponse } = await axios.post("/api/getTenantUserPool", {
+          email: email,
+        })
 
-        console.log("User Login Data", data);
-        setOrganizationName(data.TenantData.id);
-
+        //console.log("User Login Data", data)
+        setOrganizationName(data.TenantData.id)
       } catch (err: any) {
-        console.error("❌ error:", err.message);
+        console.error("❌ error:", err.message)
+        setIsError(true);
+        setLoading(false);
       }
     }
 
-    fetchingData();
+    fetchingData()
   }, [])
 
   React.useEffect(() => {
-
     responseData()
   }, [organizationName])
 
@@ -1010,7 +1038,7 @@ export default function EmployeeListTable() {
   }
 
   // Add this new function to handle the actual deletion after confirmation
-  
+
   async function confirmDelete(id: string) {
     try {
       // First, fetch all related education records
@@ -1052,7 +1080,7 @@ export default function EmployeeListTable() {
         variant: "destructive",
       })
     }
-    setDeleteDialogOpen(false);
+    setDeleteDialogOpen(false)
   }
 
   const handleExportCSV = () => {
@@ -1226,6 +1254,7 @@ export default function EmployeeListTable() {
                 ? "secondary"
                 : "outline"
           }
+          className={row.getValue("status") === "New Hire" ? "bg-green-400 text-nowrap hover:bg-green-300" : ""}
         >
           {row.getValue("status")}
         </Badge>
@@ -1358,6 +1387,8 @@ export default function EmployeeListTable() {
       <DataTable
         columns={columns}
         data={datas}
+        loading={loading}
+        isError={isError}
         onView={(employee) => setViewEmployee(employee)}
         onEdit={(employee) => setEditEmployee(employee)}
         onDelete={handleDeleteEmployees}

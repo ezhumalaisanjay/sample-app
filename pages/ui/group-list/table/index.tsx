@@ -85,7 +85,7 @@ const GroupListTable = () => {
           }
         );
 
-        console.log("User Login Data", data);
+        //console.log("User Login Data", data);
         setOrganizationName(data.TenantData.id);
 
       } catch (err: any) {
@@ -113,10 +113,11 @@ const GroupListTable = () => {
         }));
         
         setDatas(transformedData);
+        //console.log("Groups Data :", transformedData);
       },
-    })
+    }) 
 
-    setIsLoading(false)
+    setTimeout(() => setIsLoading(false), 3000);
   }, [organizationName])
 
   const exportToPDF = () => {

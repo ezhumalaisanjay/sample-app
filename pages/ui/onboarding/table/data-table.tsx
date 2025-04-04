@@ -47,6 +47,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   isLoading: boolean
+  isError: boolean
   exportExcel?: () => void
   exportPDF?: () => void
   exportCSV?: () => void
@@ -67,6 +68,7 @@ export default function DataTable<TData, TValue>({
   columns,
   data,
   isLoading,
+  isError,
   exportPDF,
   exportCSV,
   exportExcel,
@@ -79,6 +81,7 @@ export default function DataTable<TData, TValue>({
     pageSize: 8,
   })
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    id: false,
     uanNumber: false,
     aadharNumber: false,
     officialEmail: false,
@@ -87,8 +90,6 @@ export default function DataTable<TData, TValue>({
     School: false,
     Company: false,
     department: false,
-    jobTitle: false,
-    status: false,
     location: false,
   })
   const [mounted, setMounted] = useState(false)
@@ -165,23 +166,15 @@ export default function DataTable<TData, TValue>({
     return null
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
-
   return (
     <div>
-      <div className="flex justify-between items-center p-2">
+      <div className="flex justify-between flex-wrap sm:flex-nowrap gap-3 items-center p-2">
         <div className="flex w-full gap-2">
           <Input
             placeholder="Search all columns..."
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(event.target.value)}
-            className="max-w-sm ml-2"
+            className="max-w-sm lg:ml-2"
           />
         </div>
         <div className="flex gap-1">
@@ -383,7 +376,7 @@ export default function DataTable<TData, TValue>({
         </div>
       </div>
       <div>
-        <ScrollArea className="rounded-md border w-[90vw] lg:w-full">
+        <ScrollArea className="rounded-md border w-[84vw] md:w[90vw] lg:w-full">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -397,7 +390,14 @@ export default function DataTable<TData, TValue>({
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length + 1} className="h-24 text-center">
+                    Loading data...
+                  </TableCell>
+                </TableRow>
+              ) : 
+              table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                     {row.getVisibleCells().map((cell) => (
@@ -405,7 +405,15 @@ export default function DataTable<TData, TValue>({
                     ))}
                   </TableRow>
                 ))
-              ) : (
+              ) : isError ? 
+              (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    Error Fetching Data. Try again.
+                  </TableCell>
+                </TableRow>
+              )
+              : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center">
                     No results.

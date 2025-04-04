@@ -5,24 +5,20 @@ import EmployeeListTable from "@/pages/ui/employee-list"
 import GroupListTable from "@/pages/ui/group-list/table"
 import SiteHeader from "@/pages/ui/header"
 import AppSidebar from "@/pages/ui/sidebar"
-import UsersListTable from "@/pages/ui/users-list/table/index"
-import { ChartNoAxesColumn, Frame, PersonStanding, PieChart, Proportions, Settings } from "lucide-react"
+import { ChartNoAxesColumn, Frame, Loader, PackagePlus, PersonStanding, Proportions, Settings } from "lucide-react"
 import { useEffect, useState } from "react"
 
 function Users() {
-  const [ isActive, setIsActive ] = useState<number>(2);
+  const [ isActive, setIsActive ] = useState<number>(3);
+  const [ isClient, setIsClient ] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, [])
 
   const breadCrumbs = [
     {
       index: 0,
-      name: "Dashboard",
-      url: "/tenant/dashboard",
-    }, {
-      index: 1,
-      name: "Analytics",
-      url: "/tenant/analytics",
-    }, {
-      index: 2,
       name: "Users",
       url: "/tenant/users",
     },
@@ -34,6 +30,11 @@ function Users() {
         name: "Dashboard",
         url: "/tenant/dashboard",
         icon: Frame,
+      },
+      {
+        name: "Onboarding",
+        url: "/tenant/onboarding",
+        icon: PackagePlus,
       },
       {
         name: "Analytics",
@@ -58,22 +59,17 @@ function Users() {
     ],
   }
 
-  useEffect(() => {
-    // Example of setting searchParams from an async fetch if needed.
-    // Make sure you handle async data properly.
-    // setSearchParams({ search: 'newSearch', tenant: 'tenant-b', group: 'group-2', page: '1' });
-  }, []);
-
   const handleClick = (id: number) => {
     setIsActive(id);
   }
 
   return(
-    <>  
+    <>
+      {isClient ?  
       <ThemeProvider>
         <div className="[--header-height:calc(theme(spacing.14))] flex w-full">
           <SidebarProvider>
-            <SiteHeader isActive={isActive} handleClick={handleClick} breadCrumbs={breadCrumbs} />
+            <SiteHeader isActive={0} handleClick={handleClick} breadCrumbs={breadCrumbs} />
             <div className="flex flex-1">
               <AppSidebar data={data} isActive={isActive} handleClick={handleClick}/>
               <SidebarInset className="w-full max-w-full overflow-hidden">
@@ -97,9 +93,12 @@ function Users() {
             </div>
           </SidebarProvider>
         </div>
-      </ThemeProvider>
-    </>
-    
+      </ThemeProvider> :
+      <div className="flex justify-center w-screen h-screen items-center">
+        <Loader className="animate-spin" />
+      </div>
+      }
+    </>    
   )
 }
 

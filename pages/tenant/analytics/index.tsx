@@ -2,19 +2,21 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ThemeProvider } from "@/components/ui/theme-provider"
 import SiteHeader from "@/pages/ui/header"
 import AppSidebar from "@/pages/ui/sidebar"
-import { ChartNoAxesColumn, Frame, PersonStanding, PieChart, Proportions, Settings } from "lucide-react"
-import { useState } from "react"
+import { ChartNoAxesColumn, Frame, Loader, PackagePlus, PersonStanding, PieChart, Proportions, Settings } from "lucide-react"
+import { useEffect, useState } from "react"
 import HRMetricsDashboard from "@/pages/ui/hr-metrics"
 
 function Other() {
-  const [ isActive, setIsActive ] = useState<number>(1);
+  const [ isActive, setIsActive ] = useState<number>(2);
+  const [ isClient, setIsClient ] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, [])
+
   const breadCrumbs = [
     {
       index: 0,
-      name: "Dashboard",
-      url: "/tenant/dashboard",
-    }, {
-      index: 1,
       name: "Analytics",
       url: "/tenant/analytics",
     },
@@ -26,6 +28,11 @@ function Other() {
         name: "Dashboard",
         url: "/tenant/dashboard",
         icon: Frame,
+      },
+      {
+        name: "Onboarding",
+        url: "/tenant/onboarding",
+        icon: PackagePlus,
       },
       {
         name: "Analytics",
@@ -55,11 +62,12 @@ function Other() {
   }
 
   return(
-    <>  
+    <>
+      {isClient ?  
       <ThemeProvider>
         <div className="[--header-height:calc(theme(spacing.14))] flex w-full">
           <SidebarProvider>
-            <SiteHeader isActive={isActive} handleClick={handleClick} breadCrumbs={breadCrumbs} />
+            <SiteHeader isActive={0} handleClick={handleClick} breadCrumbs={breadCrumbs} />
             <div className="flex flex-1">
               <AppSidebar data={data} isActive={isActive} handleClick={handleClick}/>
               <SidebarInset>
@@ -70,7 +78,11 @@ function Other() {
             </div>
           </SidebarProvider>
         </div>
-      </ThemeProvider>
+      </ThemeProvider> : 
+      <div className="flex justify-center w-screen h-screen items-center">
+        <Loader className="animate-spin" />
+      </div>
+      }
     </>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   BarChart3,
   BriefcaseBusiness,
@@ -26,10 +26,43 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import axios from "axios"
+import { Amplify } from "aws-amplify"
+import outputs from "@/amplify_outputs.json"
+import { generateClient } from "aws-amplify/api"
+import type { Schema } from "@/amplify/data/resource"
+
+interface TenantResponse {
+  ClientId: string
+  TenantData: {
+    UserID: string
+    admin_email: string
+    admin_name: string
+    client_id: string
+    createdAt: string
+    group_name: string
+    id: string
+    identity_pool_id: string
+    phone_number: string 
+    tenant_name: string
+    updatedAt: string
+    user_pool_id: string
+  }
+}
+
+Amplify.configure(outputs)
+const client = generateClient<Schema>()
 
 export default function HRMetricsDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
   const [filterOpen, setFilterOpen] = useState(false)
+  const [organizationName, setOrganizationName] = useState("");
+  const [employeesCount, setEmployeesCount] = useState(0);
+  const [tempEmployeesCount, setTempEmployeesCount] = useState(0);
+  const [tempNewUsersCount, setTempNewUsersCount] = useState(0);
+  const [newUsersCount, setNewUsersCount] = useState(0);
+  const [turnoverRate, setTurnOverRate] = useState(0);
+  const [tempTurnoverRate, setTempTurnoverRate] = useState(0);
   const [filters, setFilters] = useState<{
     department: string[]
     location: string[]
@@ -43,6 +76,69 @@ export default function HRMetricsDashboard() {
     employmentType: [],
     status: "all",
   })
+  
+  const turnoverRateCalculation = ({
+    totalEmployees,
+    onLeaveEmployees,
+  }: { totalEmployees: number; onLeaveEmployees: number }) => {
+    // Check if totalEmployees is 0 or if either value is not a valid number
+    if (totalEmployees === 0 || isNaN(totalEmployees) || isNaN(onLeaveEmployees)) {
+      return 0
+    }
+
+    const result = (onLeaveEmployees / totalEmployees) * 100
+    const roundedResult = result.toFixed(1)
+    return Number(roundedResult)
+  }
+
+  useEffect(() => {
+    const fetchingData = async () => {
+      const email = localStorage.getItem("email") || "default@example.com"
+      try {
+        const { data }: { data: TenantResponse } = await axios.post(
+          "/api/getTenantUserPool",
+          {
+            email: email,
+          }
+        );
+
+        //console.log("User Login Data", data);
+        setOrganizationName(data.TenantData.id);
+
+      } catch (err: any) {
+        console.error("❌ error:", err.message);
+      }
+    }
+
+    fetchingData();
+  }, [])
+
+  function responseData() {
+    client.models.Onboarding.observeQuery().subscribe({
+      next: (data) => {
+        const organizationFilteredData = data.items.filter((item) => item.organization === organizationName)
+
+        const tempEmployeeCount = organizationFilteredData.length;
+        setTempEmployeesCount(tempEmployeeCount);
+
+        const tempNewHiresCount = organizationFilteredData.filter((item) => item.status === "New Hire").length;
+        setTempNewUsersCount(tempNewHiresCount);
+
+        const tempOnLeaveUsersCount = organizationFilteredData.filter((item) => item.status === "On Leave").length;
+        const tempTurnover = turnoverRateCalculation({ totalEmployees: tempEmployeesCount, onLeaveEmployees: tempOnLeaveUsersCount });
+        setTempTurnoverRate(tempTurnover)
+      },
+    })
+  }
+
+  useEffect(() => {
+
+    setEmployeesCount(tempEmployeesCount);
+    setNewUsersCount(tempNewUsersCount);
+    setTurnOverRate(tempTurnoverRate);
+
+    responseData();
+  }, [organizationName, tempNewUsersCount, tempEmployeesCount, tempTurnoverRate])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -78,7 +174,7 @@ export default function HRMetricsDashboard() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">1,248</div>
+                    <div className="text-2xl font-bold">{employeesCount}</div>
                     <p className="text-xs text-muted-foreground">+12% from last month</p>
                   </CardContent>
                 </Card>
@@ -88,7 +184,7 @@ export default function HRMetricsDashboard() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">24</div>
+                    <div className="text-2xl font-bold">{newUsersCount}</div>
                     <p className="text-xs text-muted-foreground">+4% from last month</p>
                   </CardContent>
                 </Card>
@@ -98,7 +194,7 @@ export default function HRMetricsDashboard() {
                     <LineChart className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">3.2%</div>
+                    <div className="text-2xl font-bold">{turnoverRate}%</div>
                     <p className="text-xs text-muted-foreground">-0.5% from last month</p>
                   </CardContent>
                 </Card>

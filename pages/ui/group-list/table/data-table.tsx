@@ -55,7 +55,7 @@ export default function DataTable<TData, TValue>({ columns, data, isLoading, exp
   })
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     {
-      tenant: false
+      id: false
     }
   )
   const [mounted, setMounted] = useState(false)
@@ -111,17 +111,9 @@ export default function DataTable<TData, TValue>({ columns, data, isLoading, exp
     return null
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
-
   // Get unique tenants and groups from the data
-  const tenants = Array.from(new Set(data.map((item: any) => item.tenant)))
-  const groups = Array.from(new Set(data.map((item: any) => item.group_name)))
+  const tenants = Array.from(new Set(data.map((item: any) => item.organization)))
+  const groups = Array.from(new Set(data.map((item: any) => item.groupName)))
 
   return (
     <div>
@@ -129,8 +121,8 @@ export default function DataTable<TData, TValue>({ columns, data, isLoading, exp
         <div className="flex w-full gap-2">
           <Input
             placeholder="Search Name..."
-            value={(table.getColumn("description")?.getFilterValue() as string) ?? ""}
-            onChange={(event) => table.getColumn("description")?.setFilterValue(event.target.value)}
+            value={(table.getColumn("groupName")?.getFilterValue() as string) ?? ""}
+            onChange={(event) => table.getColumn("groupName")?.setFilterValue(event.target.value)}
             className="max-w-sm"
           />
         </div>
@@ -254,7 +246,15 @@ export default function DataTable<TData, TValue>({ columns, data, isLoading, exp
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
+              {isLoading ?
+                 (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                ) :
+              table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                     {row.getVisibleCells().map((cell) => (

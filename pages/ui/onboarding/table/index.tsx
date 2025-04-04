@@ -123,6 +123,7 @@ const UsersListTable = () => {
   const [educationData, setEducationData] = useState<Array<any>>([])
   const [experienceData, setExperienceData] = useState<Array<any>>([])
   const [organizationName, setOrganizationName] = useState<string>("");
+  const [isError, setIsError] = useState<boolean>(false);
 
   const { toast } = useToast()
 
@@ -137,11 +138,13 @@ const UsersListTable = () => {
           }
         );
 
-        console.log("User Login Data", data);
         setOrganizationName(data.TenantData.id);
+        setIsLoading(false);
 
       } catch (err: any) {
-        console.error("❌ error:", err.message);
+        console.error("❌ error:", err.message);      
+        setIsError(true);
+        setIsLoading(false);
       }
     }
 
@@ -150,7 +153,6 @@ const UsersListTable = () => {
 
   // Function to fetch and combine all data
   const combineData = useCallback(async () => {
-    setIsLoading(true);
     if (onboardingData.length === 0) return
 
     try {
@@ -186,12 +188,13 @@ const UsersListTable = () => {
       
       const filteredData = organizationFilterData.filter((data) => data.status === "New Hire")
 
-      console.log("filtered Data", filteredData);
+      //console.log("filtered Data", filteredData);
       setDatas(filteredData);
-      setIsLoading(false)
+      setTimeout(() => {setIsLoading(false)}, 2000);
     } catch (error) {
       console.error("Error combining data:", error)
-      setIsLoading(false)
+      setIsLoading(false);
+      setIsError(true);
     }
   }, [onboardingData, educationData, experienceData, organizationName])
 
@@ -200,28 +203,40 @@ const UsersListTable = () => {
     // Onboarding subscription
     const onboardingSub = client.models.Onboarding.observeQuery().subscribe({
       next: (data) => {
-        console.log("Onboarding data updated:", data.items)
+        //console.log("Onboarding data updated:", data.items)
         setOnboardingData([...data.items])
       },
-      error: (error) => console.error("Onboarding subscription error:", error),
+      error: (error) => {
+        console.error("Onboarding subscription error:", error)
+        setIsError(true);
+        setIsLoading(false);
+      },
     })
 
     // Education subscription
     const educationSub = client.models.Education.observeQuery().subscribe({
       next: (data) => {
-        console.log("Education data updated:", data.items)
+        //console.log("Education data updated:", data.items)
         setEducationData([...data.items])
       },
-      error: (error) => console.error("Education subscription error:", error),
+      error: (error) => {
+        console.error("Education subscription error:", error)
+        setIsError(true);
+        setIsLoading(false);
+      },
     })
 
     // Experience subscription
     const experienceSub = client.models.Experience.observeQuery().subscribe({
       next: (data) => {
-        console.log("Experience data updated:", data.items)
+        //console.log("Experience data updated:", data.items)
         setExperienceData([...data.items])
       },
-      error: (error) => console.error("Experience subscription error:", error),
+      error: (error) => {
+        setIsError(true);
+        setIsLoading(false);
+        console.error("Experience subscription error:", error)
+      },
     })
 
     setOnboardingSubscription(onboardingSub)
@@ -467,7 +482,7 @@ const UsersListTable = () => {
     },
     {
       accessorKey: "jobTitle",
-      header: "Job ",
+      header: "Position",
     },
     {
       accessorKey: "location",
@@ -590,6 +605,7 @@ const UsersListTable = () => {
         <OnboardingTable
           columns={columns}
           data={datas}
+          isError={isError}
           isLoading={isLoading}
           exportPDF={exportToPDF}
           exportCSV={exportToCSV}

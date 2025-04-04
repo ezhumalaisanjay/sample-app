@@ -1,12 +1,10 @@
 "use client";
 
 import {
-  BadgeCheck,
   Bell,
   ChevronsUpDown,
-  CreditCard,
   LogOut,
-  Sparkles,
+  UserPen,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,7 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import axios, {AxiosResponse, isAxiosError} from "axios";
+import axios from "axios";
 
 interface User {
   name?: string;
@@ -67,11 +65,11 @@ export default function NavUser() {
           }
         );
 
-        console.log("SideBar Data", data);
+        //console.log("User Login Data", data);
         setUser({
           name: data?.TenantData.admin_name || "Guest User",
           email: data?.TenantData.id || "guest@example.com",
-          avatar: "/default-avatar.png", // Default avatar since TenantData doesn't have an avatar property
+          avatar: "https://github.com/shadcn.png", // Default avatar since TenantData doesn't have an avatar property
         });
 
       } catch (err: any) {
@@ -79,7 +77,7 @@ export default function NavUser() {
         setUser({
           name:  "Guest User",
           email: "guest@example.com",
-          avatar: "/default-avatar.png",
+          avatar: "https://github.com/shadcn.png",
         });
       }
     }
@@ -88,6 +86,7 @@ export default function NavUser() {
   }, [])
 
   return (
+    <> { user && 
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
@@ -98,7 +97,12 @@ export default function NavUser() {
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user?.avatar} alt={user?.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg">
+                {typeof(user?.name) == "string" ? user.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("") : "GU"}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user?.name}</span>
@@ -117,7 +121,12 @@ export default function NavUser() {
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user?.avatar} alt={user?.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">
+                  {typeof(user?.name) == "string" ? user.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("") : "GU"}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user?.name}</span>
@@ -132,14 +141,10 @@ export default function NavUser() {
             <DropdownMenuGroup>
               <Link href={"/profile"}>
                 <DropdownMenuItem>
-                  <BadgeCheck />
+                  <UserPen />
                   Profile
                 </DropdownMenuItem>
               </Link>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
                 Notifications
@@ -156,5 +161,7 @@ export default function NavUser() {
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+    }
+    </>
   );
 }

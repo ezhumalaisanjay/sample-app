@@ -12,12 +12,42 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import UsageChart from "./usage-chart"
-import RecentSales from "./recent-sales"
-import { useState } from "react"
+import EmployeeLists from "./employee-list"
+import { useEffect, useState } from "react"
 import { Boxes, Globe, TicketsPlane, Users } from "lucide-react"
+import axios from "axios"
+import { Amplify } from "aws-amplify"
+import outputs from "@/amplify_outputs.json"
+import { generateClient } from "aws-amplify/api"
+import type { Schema } from "@/amplify/data/resource"
+import { decodeJwt } from "@/lib/jwt-data/data"
+
+interface TenantResponse {
+  ClientId: string
+  TenantData: {
+    UserID: string
+    admin_email: string
+    admin_name: string
+    client_id: string
+    createdAt: string
+    group_name: string
+    id: string
+    identity_pool_id: string
+    phone_number: string 
+    tenant_name: string
+    updatedAt: string
+    user_pool_id: string
+  }
+}
+
+Amplify.configure(outputs)
+const client = generateClient<Schema>()
 
 export default function TenetDashboard() {
-  
+  const [usersCount, setUsersCount] = useState(0);
+  const [newUsersCount, setNewUsersCount] = useState(0);
+  const [organizationName, setOrganizationName] = useState("");
+
   const [data, setData] = useState([
     {
       name: "Total Organizations",
@@ -29,114 +59,67 @@ export default function TenetDashboard() {
       icon: <Boxes className="size-4 text-blue-500" />,
     }, {
       name: "Total Users",
-      count: "25,001",
+      count: usersCount,
       icon: <Users className="size-4 text-violet-500" />,
     }, {
       name: "New Users",
-      count: "1001",
+      count: newUsersCount,
       icon: <TicketsPlane className="size-4 text-amber-500" />,
     },
   ]);
+  
+  useEffect(() => {
+    const idToken = localStorage.getItem("idToken");
+  
+    if (idToken) {
+      const decodedData = decodeJwt({ idToken });
+      console.log("This is IdToken", decodedData);  // This will log the decoded JWT payload (user data)
+      console.log("Organization Name", decodedData["custom:organization"]);
+      setOrganizationName(decodedData["custom:organization"]);
+    } else {
+      console.log("No idToken found in localStorage.");
+    }
 
-  const [employeesData, setEmployeesData] = useState([
-    {
-      id: "1234567",
-      name: "Jesse Pinkman",
-      department: "DevOps",
-      job: "Developer",
-      status: "Active",
-      startDate: "01-02-2020",
-      location: "Chennai",
-    }, {
-      id: "7654321",
-      name: "Walter White",
-      department: "DevOps",
-      job: "Designer",
-      status: "Active",
-      startDate: "02-01-2019",
-      location: "Madras",
-    }, {
-      id: "0987654",
-      name: "Gus Fring",
-      department: "DevOps",
-      job: "Product Coordinator",
-      status: "Active",
-      startDate: "11-03-2018",
-      location: "Mumbai",
-    }, {
-      id: "1234567",
-      name: "Jesse Pinkman",
-      department: "DevOps",
-      job: "Developer",
-      status: "Active",
-      startDate: "01-02-2020",
-      location: "Chennai",
-    }, {
-      id: "7654321",
-      name: "Walter White",
-      department: "DevOps",
-      job: "Designer",
-      status: "Active",
-      startDate: "02-01-2019",
-      location: "Madras",
-    }, {
-      id: "0987654",
-      name: "Gus Fring",
-      department: "DevOps",
-      job: "Product Coordinator",
-      status: "Active",
-      startDate: "11-03-2018",
-      location: "Mumbai",
-    }, {
-      id: "1234567",
-      name: "Jesse Pinkman",
-      department: "DevOps",
-      job: "Developer",
-      status: "Active",
-      startDate: "01-02-2020",
-      location: "Chennai",
-    }, {
-      id: "7654321",
-      name: "Walter White",
-      department: "DevOps",
-      job: "Designer",
-      status: "Active",
-      startDate: "02-01-2019",
-      location: "Madras",
-    }, {
-      id: "0987654",
-      name: "Gus Fring",
-      department: "DevOps",
-      job: "Product Coordinator",
-      status: "Active",
-      startDate: "11-03-2018",
-      location: "Mumbai",
-    }, {
-      id: "1234567",
-      name: "Jesse Pinkman",
-      department: "DevOps",
-      job: "Developer",
-      status: "Active",
-      startDate: "01-02-2020",
-      location: "Chennai",
-    }, {
-      id: "7654321",
-      name: "Walter White",
-      department: "DevOps",
-      job: "Designer",
-      status: "Active",
-      startDate: "02-01-2019",
-      location: "Madras",
-    }, {
-      id: "0987654",
-      name: "Gus Fring",
-      department: "DevOps",
-      job: "Product Coordinator",
-      status: "Active",
-      startDate: "11-03-2018",
-      location: "Mumbai",
-    }, 
-  ])
+  }, [])
+
+  function responseData() {
+    client.models.Onboarding.observeQuery().subscribe({
+      next: (data) => {
+        const organizationFilteredData = data.items.filter((item) => item.organization === organizationName)
+
+        const tempEmployeesCount = organizationFilteredData.length;
+        setUsersCount(tempEmployeesCount);
+
+        const tempNewHiresCount = organizationFilteredData.filter((item) => item.status === "New Hire").length;
+        setNewUsersCount(tempNewHiresCount);
+      },
+    })
+  }
+
+  useEffect(() => {
+    responseData();
+
+    setData([
+      {
+        name: "Total Organizations",
+        count: "50",
+        icon: <Globe className="size-4 text-green-500" />,
+      }, {
+        name: "Total Groups",
+        count: "152",
+        icon: <Boxes className="size-4 text-blue-500" />,
+      }, {
+        name: "Total Users",
+        count: usersCount,
+        icon: <Users className="size-4 text-violet-500" />,
+      }, {
+        name: "New Users",
+        count: newUsersCount,
+        icon: <TicketsPlane className="size-4 text-amber-500" />,
+      },
+    ]);
+
+  }, [organizationName, newUsersCount, usersCount])
 
   return (
     <>
@@ -149,15 +132,6 @@ export default function TenetDashboard() {
           <Tabs defaultValue="overview" className="space-y-4">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="analytics">
-                Analytics
-              </TabsTrigger>
-              <TabsTrigger value="reports">
-                Reports
-              </TabsTrigger>
-              <TabsTrigger value="notifications">
-                Notifications
-              </TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -192,11 +166,11 @@ export default function TenetDashboard() {
                   <CardHeader>
                     <CardTitle>Employees List</CardTitle>
                     <CardDescription>
-                      You made 265 sales this month.
+                      Total Current Users List
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <RecentSales />
+                    <EmployeeLists />
                   </CardContent>
                 </Card>
               </div>

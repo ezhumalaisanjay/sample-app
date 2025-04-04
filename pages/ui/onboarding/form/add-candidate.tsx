@@ -47,6 +47,7 @@ const formSchema = z.object({
   officialEmail: z.string().email({ message: "Please enter a valid email address" }).optional(),
   aadharNumber: z.string().optional(),
   panNumber: z.string().optional(),
+  gender: z.string().min(1, { message: "Gender is required" }),
   photo: z.any().optional(),
 
   //Professional Details
@@ -207,6 +208,7 @@ function AddCandidateForm({ data, close }: AddCandidateFormProps) {
     officialEmail: "",
     aadharNumber: "",
     panNumber: "",
+    gender: "",
     sourceofhire: "",
     jobTitle: "",
     skillset: "",
@@ -757,6 +759,31 @@ function AddCandidateForm({ data, close }: AddCandidateFormProps) {
                     <FormControl>
                       <Input type="text" placeholder="PAN" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem className="flex w-full items-center flex-wrap gap-3">
+                    <FormLabel>Gender</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Select Gender</SelectLabel>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
